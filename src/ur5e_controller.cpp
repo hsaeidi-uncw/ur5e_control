@@ -14,46 +14,40 @@
 #include <string>
 #include <sstream>
 
-
-KDL::Chain LWR(){
-
-  double tool_length = 0.506;//0.01735;
-
+// define the kinematic chain
+KDL::Chain UR5e(){
 
   KDL::Chain chain;
-
+  // input parameters for the DH Frames are (double a,double alpha,double d,double theta)
   //base
   chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),
-        KDL::Frame::DH_Craig1989(0,0,0.33989,0)));
+        KDL::Frame::DH(0, 0, 0, 0)));
 
   //joint 1
   chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),
-        KDL::Frame::DH_Craig1989(0, -M_PI_2,0,0)));
+        KDL::Frame::DH(0, M_PI_2, 0.1625, 0)));
 
   //joint 2 
   chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),
-        KDL::Frame::DH_Craig1989(0,M_PI_2,0.40011,0)));
+        KDL::Frame::DH(-0.425, 0, 0, 0)));
 
   //joint 3
   chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),
-        KDL::Frame::DH_Craig1989(0,M_PI_2,0,0)));
+        KDL::Frame::DH(-0.3922, 0, 0, 0)));
 
   //joint 4
   chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),
-        KDL::Frame::DH_Craig1989(0, -M_PI_2,0.40003,0)));
+        KDL::Frame::DH(0, M_PI_2, 0.1333,0)));
 
   //joint 5
   chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),
-        KDL::Frame::DH_Craig1989(0, -M_PI_2,0,0)));
+        KDL::Frame::DH(0, -M_PI_2, 0.0997, 0)));
 
   //joint 6
   chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),
-        KDL::Frame::DH_Craig1989(0, M_PI_2,0,0)));
+        KDL::Frame::DH(0, 0, 0.0996, 0)));
 
-  //joint 7 (with flange adapter)
-  chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),
-  KDL::Frame::DH_Craig1989(0,0, tool_length,0)));
-
+ 
   return chain;
 
 }
@@ -62,7 +56,7 @@ KDL::Chain LWR(){
 
 int main(int argc, char * argv[]){
 	// define the kinematic chain
-	KDL::Chain chain = LWR();
+	KDL::Chain chain = UR5e();
 	// define the forward kinematic solver via the defined chain
 	KDL::ChainFkSolverPos_recursive fksolver = KDL::ChainFkSolverPos_recursive(chain);
 	// define the inverse kinematics solver
@@ -83,6 +77,35 @@ int main(int argc, char * argv[]){
 	ros::init(argc,argv, "ur5e_controller");
 	ros::NodeHandle nh_;
 
+	// setting up the loop frequency 
+	int loop_freq = 10;
+	float dt = (float) 1/loop_freq;
+	ros::Rate loop_rate(loop_freq);
+
+	tf::TransformBroadcaster br;
+	while(ros::ok()){
+			KDL::Frame cartpos; 
+			double roll, pitch, yaw;
+			bool kinematics_status;
+			kinematics_status = fksolver.JntToCart(jointpositions,cartpos);
+			std::cout <<  " in the while loop" << std::endl;	
+			if(kinematics_status>=0){
+				cartpos.M.GetRPY(roll,pitch, yaw);
+				
+   			 	tf::Transform tool_in_world;
+				tf::Vector3 tf_pose;
+				tf::Quaternion tf_q;
+				tf_pose = tf::Vector3(cartpos.p[0], cartpos.p[1], cartpos.p[2]);
+				tf_q.setRPY(roll, pitch, yaw);
+				tool_in_world.setOrigin(tf_pose);
+				tool_in_world.setRotation(tf_q);
+				br.sendTransform(tf::StampedTransform(tool_in_world, ros::Time::now(), "world", "tool_tip"));
+				std::cout <<  " in the kinematic chain" << std::endl;	
+
+			}
+		loop_rate.sleep();
+		ros::spinOnce();
+	}
 	
 	return 0;
 }
