@@ -63,13 +63,14 @@ void get_joint_pose(const sensor_msgs::JointState & data){
 		// if this is not the first time the callback function is read, obtain the joint positions
 		if(joints_initialized){
 			joint_positions.position[i] = data.position[i];	
-			std::cout << "joint "<< i+1 << ": " <<joint_positions.position[i] << std::endl;
+			//std::cout << "joint "<< i+1 << ": " <<joint_positions.position[i] << std::endl;
 		// otherwise initilize them with 0.0 values
 		}else{
 			joint_positions.position.push_back(0.0);
+			joints_initialized = true;
 		}
 	}	
-	joints_initialized = true;
+	
 }
 
 //defines the joint names for the robot (used in the jointTrajectory messages)
@@ -101,6 +102,22 @@ void eval_points(trajectory_msgs::JointTrajectoryPoint & _point, KDL::JntArray &
 		_point.positions[i] = _jointpositions(i);
 	}	
 }
+
+KDL::Frame update_ref(geometry_msgs::Twist _ref){
+	// define a rpy rotation using KDL
+	KDL::Rotation rpy = KDL::Rotation::RPY(0.0, 0.0, 0.0);
+	// define a KDL frame
+	KDL::Frame _cartpos;
+	// update the reference cartesian positions
+	_cartpos.p[0]= _ref.linear.x;
+	_cartpos.p[1]= _ref.linear.y;
+	_cartpos.p[2]= _ref.linear.z;			
+	rpy = KDL::Rotation::RPY(_ref.angular.x, _ref.angular.y, _ref.angular.z);
+	_cartpos.M = rpy;
+	
+	return _cartpos;
+}
+
 
 tf::Transform update_tool_frame(KDL::Frame _cartpos){
 
@@ -138,6 +155,15 @@ geometry_msgs::Twist update_xyzrpy(KDL::Frame _cartpos){
 }
 
 
+// read the reference trajectory from the reflexxes node e.g. ref xyz-rpy
+bool ref_received= false;
+geometry_msgs::Twist ref;
+void get_ref(const geometry_msgs::Twist & data){
+	std::cout << "inside get ref" << std::endl;
+	ref = data;
+	ref_received = true;
+}
+
 int main(int argc, char * argv[]){
 	// define the kinematic chain
 	KDL::Chain chain = UR5e();
@@ -150,9 +176,9 @@ int main(int argc, char * argv[]){
 	// get the number of joints from the chain
 	unsigned int no_of_joints = chain.getNrOfJoints();
 	// define a joint array in KDL format for the joint positions
-    KDL::JntArray jointpositions = KDL::JntArray(no_of_joints);
+    KDL::JntArray q_current = KDL::JntArray(no_of_joints);
 	// define a joint array in KDL format for the next joint positions
-	KDL::JntArray jointpositions_new = KDL::JntArray(no_of_joints);
+	KDL::JntArray q_next = KDL::JntArray(no_of_joints);
 	
 	
 
@@ -170,6 +196,9 @@ int main(int argc, char * argv[]){
 	// subscriber for reading the joint angles
 	ros::Subscriber joints_sub = nh_.subscribe("/joint_states",10, get_joint_pose);
 	
+	// subscriber for reading the reference trajectories from the reflexxes-based node	
+	ros::Subscriber ref_sub = nh_.subscribe("/reftraj",10, get_ref);
+	
 	// setting up the loop frequency 
 	int loop_freq = 10;
 	float dt = (float) 1/loop_freq;
@@ -183,6 +212,7 @@ int main(int argc, char * argv[]){
 	// define a KDL frame for use in the kinematic solver
 	KDL::Frame cartpos; 
 	
+
 	// define the joint control command and a point in it
 	trajectory_msgs::JointTrajectory joint_cmd;
 	trajectory_msgs::JointTrajectoryPoint joint_cmd_point;
@@ -193,7 +223,7 @@ int main(int argc, char * argv[]){
 
 	// quick debugging
 	KDL::JntArray manual_joint_cmd = KDL::JntArray(no_of_joints);
-	manual_joint_cmd(1) = -M_PI/2;
+	//manual_joint_cmd(1) = -M_PI/2;
 	eval_points(joint_cmd_point, manual_joint_cmd, no_of_joints);	
 	joint_cmd_point.time_from_start = ros::Duration(1.0);
 	joint_cmd.points.push_back(joint_cmd_point);
@@ -201,24 +231,43 @@ int main(int argc, char * argv[]){
 
 	while(ros::ok()){
 
-			
-			// flag for the fk results
-			bool kinematics_status;
-			kinematics_status = fksolver.JntToCart(jointpositions,cartpos);
-			// show the frames if the fk works well
-			if(kinematics_status >= 0){
-				
-				// define a transformation in ROS to show the frame in rviz
-   			 	tf::Transform tool_in_world;
-   			 	tool_in_world = update_tool_frame(cartpos);	
-				// boradcast the frame
-				br.sendTransform(tf::StampedTransform(tool_in_world, ros::Time::now(), "base", "fk_tooltip"));	
-
-				xyzrpy = update_xyzrpy(cartpos);
-				
-				xyzrpy_pub.publish(xyzrpy);
-				
-			}
+			if (joints_initialized){
+				// get the most current value of the joint positions
+				for (int k = 0; k < no_of_joints; ++k){
+					q_current(k) = joint_positions.position[k];
+				}
+				std::cout << "joints updated"<< std::endl;	
+				// if references for autonomous control are received
+				if (ref_received){
+					std::cout << "inside ref received" << std::endl;
+					// convert the reference to a KDL frame
+					cartpos = update_ref(ref);
+					// use the frame with the current joint positions to get the next joint positions via IK solver
+					int ret = iksolver.CartToJnt(q_current, cartpos, q_next);
+					// update the control command point
+					eval_points(joint_cmd_point, q_next, no_of_joints);
+					joint_cmd_point.time_from_start = ros::Duration(dt);
+					// update the command via the updated point
+					joint_cmd.points[0] = joint_cmd_point;
+				}
+				// flag for the fk results
+				bool kinematics_status;
+				kinematics_status = fksolver.JntToCart(q_current, cartpos);
+				// show the frames if the fk works well
+				if(kinematics_status >= 0){
+					std::cout << "inside fk" << std::endl;
+					// define a transformation in ROS to show the frame in rviz
+   			 		tf::Transform tool_in_world;
+   			 		tool_in_world = update_tool_frame(cartpos);	
+					// boradcast the frame
+					br.sendTransform(tf::StampedTransform(tool_in_world, ros::Time::now(), "base", "fk_tooltip"));	
+	
+					xyzrpy = update_xyzrpy(cartpos);
+					
+					xyzrpy_pub.publish(xyzrpy);
+					
+				}// end of kintamitc_status
+			}// end of joints_initialized
 			joint_cmd.header.stamp = ros::Time::now();
 			cmd_pub.publish(joint_cmd);
 		loop_rate.sleep();
