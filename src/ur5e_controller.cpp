@@ -72,6 +72,41 @@ void get_joint_pose(const sensor_msgs::JointState & data){
 	joints_initialized = true;
 }
 
+tf::Transform update_tool_frame(KDL::Frame _cartpos){
+
+	// define roll, pitch, yaw variables
+	double roll, pitch, yaw;
+	//extract the roll, pitch, yaw from the KDL frame after the fk calculations
+	_cartpos.M.GetRPY(roll,pitch, yaw);
+	// define the quaternions and vectors for that frame
+	tf::Vector3 tf_pose;
+	tf::Quaternion tf_q;
+	tf_pose = tf::Vector3(_cartpos.p[0], _cartpos.p[1], _cartpos.p[2]);
+	tf_q.setRPY(roll, pitch, yaw);
+	// update and return the frame
+	tf::Transform tool_frame;
+	tool_frame.setOrigin(tf_pose);
+	tool_frame.setRotation(tf_q);
+	return tool_frame;
+}
+
+
+geometry_msgs::Twist update_xyzrpy(KDL::Frame _cartpos){
+	// define roll, pitch, yaw variables
+	double roll, pitch, yaw;
+	//extract the roll, pitch, yaw from the KDL frame after the fk calculations
+	_cartpos.M.GetRPY(roll,pitch, yaw);
+	geometry_msgs::Twist _xyzrpy;
+	// update and return the values
+	_xyzrpy.linear.x = _cartpos.p[0];
+	_xyzrpy.linear.y = _cartpos.p[1];
+	_xyzrpy.linear.z = _cartpos.p[2];
+	_xyzrpy.angular.x = roll;
+	_xyzrpy.angular.y = pitch;
+	_xyzrpy.angular.z = yaw;
+	return _xyzrpy;
+}
+
 
 int main(int argc, char * argv[]){
 	// define the kinematic chain
@@ -117,31 +152,21 @@ int main(int argc, char * argv[]){
 
 	while(ros::ok()){
 
-			// define roll, pitch, yaw variables
-			double roll, pitch, yaw;
+			
 			// flag for the fk results
 			bool kinematics_status;
 			kinematics_status = fksolver.JntToCart(jointpositions,cartpos);
 			// show the frames if the fk works well
 			if(kinematics_status >= 0){
-				//extract the roll, pitch, yaw from the KDL frame after the fk calculations
-				cartpos.M.GetRPY(roll,pitch, yaw);
+				
 				// define a transformation in ROS to show the frame in rviz
    			 	tf::Transform tool_in_world;
-				tf::Vector3 tf_pose;
-				tf::Quaternion tf_q;
-				tf_pose = tf::Vector3(cartpos.p[0], cartpos.p[1], cartpos.p[2]);
-				tf_q.setRPY(roll, pitch, yaw);
-				tool_in_world.setOrigin(tf_pose);
-				tool_in_world.setRotation(tf_q);
+   			 	tool_in_world = update_tool_frame(cartpos);	
 				// boradcast the frame
 				br.sendTransform(tf::StampedTransform(tool_in_world, ros::Time::now(), "base", "fk_tooltip"));	
-				xyzrpy.linear.x = cartpos.p[0];
-				xyzrpy.linear.y = cartpos.p[1];
-				xyzrpy.linear.z = cartpos.p[2];
-				xyzrpy.angular.x = roll;
-				xyzrpy.angular.y = pitch;
-				xyzrpy.angular.z = yaw;
+
+				xyzrpy = update_xyzrpy(cartpos);
+				
 				xyzrpy_pub.publish(xyzrpy);
 				
 			}
