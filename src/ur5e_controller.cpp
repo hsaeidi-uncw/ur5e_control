@@ -75,7 +75,10 @@ int main(int argc, char * argv[]){
 	// define the ros node
 	ros::init(argc,argv, "ur5e_controller");
 	ros::NodeHandle nh_;
-
+	
+	// a publisher for quick debugging in the terminal
+	ros::Publisher xyzrpy_pub = nh_.advertise<geometry_msgs::Twist>("/ur5e/toolpose",10);
+	
 	// setting up the loop frequency 
 	int loop_freq = 10;
 	float dt = (float) 1/loop_freq;
@@ -83,9 +86,14 @@ int main(int argc, char * argv[]){
 	// define a transforma broadcaster to check the FK results
 	tf::TransformBroadcaster br;
 	
+	
+	
+	geometry_msgs::Twist xyzrpy;
+	// define a KDL frame for use in the kinematic solver
+	KDL::Frame cartpos; 
+
 	while(ros::ok()){
-			// define a KDL frame
-			KDL::Frame cartpos; 
+
 			// define roll, pitch, yaw variables
 			double roll, pitch, yaw;
 			// flag for the fk results
@@ -105,7 +113,14 @@ int main(int argc, char * argv[]){
 				tool_in_world.setRotation(tf_q);
 				// boradcast the frame
 				br.sendTransform(tf::StampedTransform(tool_in_world, ros::Time::now(), "base", "fk_tooltip"));	
-
+				xyzrpy.linear.x = cartpos.p[0];
+				xyzrpy.linear.y = cartpos.p[1];
+				xyzrpy.linear.z = cartpos.p[2];
+				xyzrpy.angular.x = roll;
+				xyzrpy.angular.y = pitch;
+				xyzrpy.angular.z = yaw;
+				xyzrpy_pub.publish(xyzrpy);
+				
 			}
 		loop_rate.sleep();
 		ros::spinOnce();
