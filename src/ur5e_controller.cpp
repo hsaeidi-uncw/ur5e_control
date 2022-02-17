@@ -59,17 +59,21 @@ sensor_msgs::JointState joint_positions;
 bool joints_initialized = false;
 //callback for reading joint values
 void get_joint_pose(const sensor_msgs::JointState & data){
-	for (int i = 0; i < data.position.size();++i){
-		// if this is not the first time the callback function is read, obtain the joint positions
-		if(joints_initialized){
-			joint_positions.position[i] = data.position[i];	
-			//std::cout << "joint "<< i+1 << ": " <<joint_positions.position[i] << std::endl;
-		// otherwise initilize them with 0.0 values
-		}else{
-			joint_positions.position.push_back(0.0);
-			joints_initialized = true;
-		}
-	}	
+	// if this is not the first time the callback function is read, obtain the joint positions
+	if(joints_initialized){
+		joint_positions.position[0] = data.position[2];	//sensor readings are in a differnt order!
+		joint_positions.position[1] = data.position[1];	
+		joint_positions.position[2] = data.position[0];	//sensor readings are in a differnt order!
+		joint_positions.position[3] = data.position[3];	
+		joint_positions.position[4] = data.position[4];	
+		joint_positions.position[5] = data.position[5];	
+	// otherwise initilize them with 0.0 values
+	}else{
+		joint_positions.position.push_back(0.0);
+	}
+		
+
+	joints_initialized = true;	
 	
 }
 
@@ -99,8 +103,14 @@ void eval_points(trajectory_msgs::JointTrajectoryPoint & _point, KDL::JntArray &
 				_jointpositions(i) -= 2*M_PI;
 		 while(_jointpositions(i) < -M_PI)
 				_jointpositions(i) += 2*M_PI;
-		_point.positions[i] = _jointpositions(i);
+
 	}	
+	_point.positions[0] = _jointpositions(2); // actuator orders in the driver are different than the chain!
+	_point.positions[1] = _jointpositions(1);
+	_point.positions[2] = _jointpositions(0); // actuator orders in the driver are different than the chain!
+	_point.positions[3] = _jointpositions(3);
+	_point.positions[4] = _jointpositions(4);
+	_point.positions[5] = _jointpositions(5);
 }
 
 KDL::Frame update_ref(geometry_msgs::Twist _ref){
@@ -188,7 +198,7 @@ int main(int argc, char * argv[]){
 	
 
 	// publisher for sending control commands to the UR5e
-	ros::Publisher cmd_pub = nh_.advertise<trajectory_msgs::JointTrajectory>("/pos_joint_traj_controller/command",10);
+	ros::Publisher cmd_pub = nh_.advertise<trajectory_msgs::JointTrajectory>("/pos_joint_traj_controller/command",1);
 	// a publisher for quick debugging in the terminal
 	ros::Publisher xyzrpy_pub = nh_.advertise<geometry_msgs::Twist>("/ur5e/toolpose",10);
 	
@@ -225,7 +235,7 @@ int main(int argc, char * argv[]){
 	KDL::JntArray manual_joint_cmd = KDL::JntArray(no_of_joints);
 	//manual_joint_cmd(1) = -M_PI/2;
 	eval_points(joint_cmd_point, manual_joint_cmd, no_of_joints);	
-	joint_cmd_point.time_from_start = ros::Duration(1.0);
+	joint_cmd_point.time_from_start = ros::Duration(dt);
 	joint_cmd.points.push_back(joint_cmd_point);
 	
 
@@ -249,13 +259,16 @@ int main(int argc, char * argv[]){
 					joint_cmd_point.time_from_start = ros::Duration(dt);
 					// update the command via the updated point
 					joint_cmd.points[0] = joint_cmd_point;
+					//std::cout << "inside while" << std::endl;
+					joint_cmd.header.stamp = ros::Time::now();
+					cmd_pub.publish(joint_cmd);
 				}
 				// flag for the fk results
 				bool kinematics_status;
 				kinematics_status = fksolver.JntToCart(q_current, cartpos);
 				// show the frames if the fk works well
 				if(kinematics_status >= 0){
-					std::cout << "inside fk" << std::endl;
+					//std::cout << "inside fk" << std::endl;
 					// define a transformation in ROS to show the frame in rviz
    			 		tf::Transform tool_in_world;
    			 		tool_in_world = update_tool_frame(cartpos);	
@@ -268,8 +281,8 @@ int main(int argc, char * argv[]){
 					
 				}// end of kintamitc_status
 			}// end of joints_initialized
-			joint_cmd.header.stamp = ros::Time::now();
-			cmd_pub.publish(joint_cmd);
+			
+			
 		loop_rate.sleep();
 		ros::spinOnce();
 	}
