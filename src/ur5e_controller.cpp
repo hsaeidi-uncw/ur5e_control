@@ -64,13 +64,12 @@ int main(int argc, char * argv[]){
 	KDL::ChainIkSolverPos_NR iksolver(chain,fksolver,iksolverv,100,1e-4);//Maximum 100 iterations, stop at accuracy 1e-6
 
 	// get the number of joints from the chain
-	unsigned int nj = chain.getNrOfJoints();
+	unsigned int no_of_joints = chain.getNrOfJoints();
 	// define a joint array in KDL format for the joint positions
-    KDL::JntArray jointpositions = KDL::JntArray(nj);
+    KDL::JntArray jointpositions = KDL::JntArray(no_of_joints);
 	// define a joint array in KDL format for the next joint positions
-	KDL::JntArray jointpositions_new = KDL::JntArray(nj);
-	// define a manual joint command array for debugging	
-	KDL::JntArray manual_joint_cmd = KDL::JntArray(nj);
+	KDL::JntArray jointpositions_new = KDL::JntArray(no_of_joints);
+	
 	
 
 	// define the ros node
@@ -81,17 +80,22 @@ int main(int argc, char * argv[]){
 	int loop_freq = 10;
 	float dt = (float) 1/loop_freq;
 	ros::Rate loop_rate(loop_freq);
-
+	// define a transforma broadcaster to check the FK results
 	tf::TransformBroadcaster br;
+	
 	while(ros::ok()){
+			// define a KDL frame
 			KDL::Frame cartpos; 
+			// define roll, pitch, yaw variables
 			double roll, pitch, yaw;
+			// flag for the fk results
 			bool kinematics_status;
 			kinematics_status = fksolver.JntToCart(jointpositions,cartpos);
-			std::cout <<  " in the while loop" << std::endl;	
-			if(kinematics_status>=0){
+			// show the frames if the fk works well
+			if(kinematics_status >= 0){
+				//extract the roll, pitch, yaw from the KDL frame after the fk calculations
 				cartpos.M.GetRPY(roll,pitch, yaw);
-				
+				// define a transformation in ROS to show the frame in rviz
    			 	tf::Transform tool_in_world;
 				tf::Vector3 tf_pose;
 				tf::Quaternion tf_q;
@@ -99,8 +103,8 @@ int main(int argc, char * argv[]){
 				tf_q.setRPY(roll, pitch, yaw);
 				tool_in_world.setOrigin(tf_pose);
 				tool_in_world.setRotation(tf_q);
-				br.sendTransform(tf::StampedTransform(tool_in_world, ros::Time::now(), "world", "tool_tip"));
-				std::cout <<  " in the kinematic chain" << std::endl;	
+				// boradcast the frame
+				br.sendTransform(tf::StampedTransform(tool_in_world, ros::Time::now(), "base", "fk_tooltip"));	
 
 			}
 		loop_rate.sleep();
