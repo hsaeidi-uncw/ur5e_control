@@ -53,6 +53,25 @@ KDL::Chain UR5e(){
 }
 
 
+//reading the joint positions
+sensor_msgs::JointState joint_positions;
+// for the frist reading
+bool joints_initialized = false;
+//callback for reading joint values
+void get_joint_pose(const sensor_msgs::JointState & data){
+	for (int i = 0; i < data.position.size();++i){
+		// if this is not the first time the callback function is read, obtain the joint positions
+		if(joints_initialized){
+			joint_positions.position[i] = data.position[i];	
+			std::cout << "joint "<< i+1 << ": " <<joint_positions.position[i] << std::endl;
+		// otherwise initilize them with 0.0 values
+		}else{
+			joint_positions.position.push_back(0.0);
+		}
+	}	
+	joints_initialized = true;
+}
+
 
 int main(int argc, char * argv[]){
 	// define the kinematic chain
@@ -78,6 +97,10 @@ int main(int argc, char * argv[]){
 	
 	// a publisher for quick debugging in the terminal
 	ros::Publisher xyzrpy_pub = nh_.advertise<geometry_msgs::Twist>("/ur5e/toolpose",10);
+	
+	
+	// subscriber for reading the joint angles
+	ros::Subscriber joints_sub = nh_.subscribe("/joint_states",10, get_joint_pose);
 	
 	// setting up the loop frequency 
 	int loop_freq = 10;
