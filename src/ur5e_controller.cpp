@@ -72,6 +72,36 @@ void get_joint_pose(const sensor_msgs::JointState & data){
 	joints_initialized = true;
 }
 
+//defines the joint names for the robot (used in the jointTrajectory messages)
+void name_joints(trajectory_msgs::JointTrajectory & _cmd){	
+		_cmd.joint_names.push_back("elbow_joint");
+		_cmd.joint_names.push_back("shoulder_lift_joint");
+		_cmd.joint_names.push_back("shoulder_pan_joint");
+		_cmd.joint_names.push_back("wrist_1_joint");
+		_cmd.joint_names.push_back("wrist_2_joint");
+		_cmd.joint_names.push_back("wrist_3_joint");
+}
+
+
+// initialize a joint command point
+void initialize_points(trajectory_msgs::JointTrajectoryPoint & _pt, int _nj, float _init){
+	for (int i = 0; i < _nj; ++i)
+		_pt.positions.push_back(_init);
+}
+
+
+// loads the joint space points to be sent as a command to the robot
+void eval_points(trajectory_msgs::JointTrajectoryPoint & _point, KDL::JntArray & _jointpositions, int _nj){
+	// check if the solver returns large values and trim them
+	for (int i = 0; i < _nj; ++i){
+		 while(_jointpositions(i) > M_PI)
+				_jointpositions(i) -= 2*M_PI;
+		 while(_jointpositions(i) < -M_PI)
+				_jointpositions(i) += 2*M_PI;
+		_point.positions[i] = _jointpositions(i);
+	}	
+}
+
 tf::Transform update_tool_frame(KDL::Frame _cartpos){
 
 	// define roll, pitch, yaw variables
@@ -130,6 +160,9 @@ int main(int argc, char * argv[]){
 	ros::init(argc,argv, "ur5e_controller");
 	ros::NodeHandle nh_;
 	
+
+	// publisher for sending control commands to the UR5e
+	ros::Publisher cmd_pub = nh_.advertise<trajectory_msgs::JointTrajectory>("/pos_joint_traj_controller/command",10);
 	// a publisher for quick debugging in the terminal
 	ros::Publisher xyzrpy_pub = nh_.advertise<geometry_msgs::Twist>("/ur5e/toolpose",10);
 	
@@ -143,12 +176,28 @@ int main(int argc, char * argv[]){
 	ros::Rate loop_rate(loop_freq);
 	// define a transforma broadcaster to check the FK results
 	tf::TransformBroadcaster br;
-	
-	
-	
+
+	// a debugging variable
 	geometry_msgs::Twist xyzrpy;
+	
 	// define a KDL frame for use in the kinematic solver
 	KDL::Frame cartpos; 
+	
+	// define the joint control command and a point in it
+	trajectory_msgs::JointTrajectory joint_cmd;
+	trajectory_msgs::JointTrajectoryPoint joint_cmd_point;
+	// set up the message with proper joint names
+	name_joints(joint_cmd);
+	// initialize the point message with zero for all joints
+	initialize_points(joint_cmd_point,no_of_joints, 0.0);
+
+	// quick debugging
+	KDL::JntArray manual_joint_cmd = KDL::JntArray(no_of_joints);
+	manual_joint_cmd(1) = -M_PI/2;
+	eval_points(joint_cmd_point, manual_joint_cmd, no_of_joints);	
+	joint_cmd_point.time_from_start = ros::Duration(1.0);
+	joint_cmd.points.push_back(joint_cmd_point);
+	
 
 	while(ros::ok()){
 
@@ -170,6 +219,8 @@ int main(int argc, char * argv[]){
 				xyzrpy_pub.publish(xyzrpy);
 				
 			}
+			joint_cmd.header.stamp = ros::Time::now();
+			cmd_pub.publish(joint_cmd);
 		loop_rate.sleep();
 		ros::spinOnce();
 	}
