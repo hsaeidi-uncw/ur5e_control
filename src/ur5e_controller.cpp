@@ -69,7 +69,10 @@ void get_joint_pose(const sensor_msgs::JointState & data){
 		joint_positions.position[5] = data.position[5];	
 	// otherwise initilize them with 0.0 values
 	}else{
-		joint_positions.position.push_back(0.0);
+		for (int i = 0; i < data.position.size();++i){
+			joint_positions.position.push_back(0.0);
+		}
+		std::cout << "joints initialized" << std::endl;
 	}
 		
 
@@ -246,7 +249,7 @@ int main(int argc, char * argv[]){
 				for (int k = 0; k < no_of_joints; ++k){
 					q_current(k) = joint_positions.position[k];
 				}
-				std::cout << "joints updated"<< std::endl;	
+					
 				// if references for autonomous control are received
 				if (ref_received){
 					std::cout << "inside ref received" << std::endl;
