@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   trajectory_msgs
   tf
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -53,11 +54,10 @@ find_package( orocos_kdl REQUIRED )
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+ add_message_files(
+   FILES
+   Plan.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -74,10 +74,10 @@ find_package( orocos_kdl REQUIRED )
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   geometry_msgs#   sensor_msgs#   std_msgs#   trajectory_msgs
-# )
+ generate_messages(
+   DEPENDENCIES
+   geometry_msgs   
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -111,7 +111,7 @@ find_package( orocos_kdl REQUIRED )
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ur5e_control
-#  CATKIN_DEPENDS geometry_msgs roscpp roslib rospy sensor_msgs std_msgs trajectory_msgs
+  CATKIN_DEPENDS geometry_msgs roscpp roslib rospy sensor_msgs std_msgs trajectory_msgs message_runtime
 #  DEPENDS system_lib
 )
 
