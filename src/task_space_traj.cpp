@@ -55,7 +55,7 @@
 //*************************************************************************
 // defines
 
-#define CYCLE_TIME_IN_SECONDS                   0.005
+#define CYCLE_TIME_IN_SECONDS                   0.1
 #define NUMBER_OF_DOFS                          6
 
 
@@ -124,21 +124,21 @@ void initialize_plan(RMLPositionInputParameters  *_IP){
 		_IP->MaxVelocityVector->VecData          [5] =    0.1      ;
 
 
-		_IP->MaxAccelerationVector->VecData      [0] =    0.5      ;
-		_IP->MaxAccelerationVector->VecData      [1] =    0.5      ;
-		_IP->MaxAccelerationVector->VecData      [2] =    0.5      ;
-		_IP->MaxAccelerationVector->VecData      [3] =    0.5      ;
-		_IP->MaxAccelerationVector->VecData      [4] =    0.5      ;
-		_IP->MaxAccelerationVector->VecData      [5] =    0.5      ;
+		_IP->MaxAccelerationVector->VecData      [0] =    0.1      ;
+		_IP->MaxAccelerationVector->VecData      [1] =    0.1      ;
+		_IP->MaxAccelerationVector->VecData      [2] =    0.1      ;
+		_IP->MaxAccelerationVector->VecData      [3] =    0.1      ;
+		_IP->MaxAccelerationVector->VecData      [4] =    0.1      ;
+		_IP->MaxAccelerationVector->VecData      [5] =    0.1      ;
 
 
 
-		_IP->MaxJerkVector->VecData              [0] =    1.0      ;
-		_IP->MaxJerkVector->VecData              [1] =    1.0      ;
-		_IP->MaxJerkVector->VecData              [2] =    1.0      ;
-		_IP->MaxJerkVector->VecData              [3] =    1.0      ;
-		_IP->MaxJerkVector->VecData              [4] =    1.0      ;
-		_IP->MaxJerkVector->VecData              [5] =    1.0      ;
+		_IP->MaxJerkVector->VecData              [0] =    0.1      ;
+		_IP->MaxJerkVector->VecData              [1] =    0.1      ;
+		_IP->MaxJerkVector->VecData              [2] =    0.1      ;
+		_IP->MaxJerkVector->VecData              [3] =    0.1      ;
+		_IP->MaxJerkVector->VecData              [4] =    0.1      ;
+		_IP->MaxJerkVector->VecData              [5] =    0.1      ;
 
 		//setting the target velocities and positions
 		_IP->TargetPositionVector->VecData       [0] =   plan.points[1].linear.x;
