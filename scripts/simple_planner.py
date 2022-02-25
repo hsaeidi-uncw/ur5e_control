@@ -22,7 +22,7 @@ if __name__ == '__main__':
 	# define a point close to the initial position
 	plan_point1.linear.x = -0.7
 	plan_point1.linear.y = -0.23
-	plan_point1.linear.z = 0.053
+	plan_point1.linear.z = 0.363
 	plan_point1.angular.x = 1.57
 	plan_point1.angular.y = 0.0
 	plan_point1.angular.z = 0.0
