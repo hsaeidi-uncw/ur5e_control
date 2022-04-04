@@ -1,5 +1,5 @@
 <launch>
-	<node pkg="tf2_ros" type="static_transform_publisher" name="robot_checkerboard" args="-0.5154 -0.1 -0.01384 1.571 0.0 0.0 base checkerboard" />
-	<node pkg="tf2_ros" type="static_transform_publisher" name="camera_checkerboard" args="0.398 -0.018 0.286 0.596 0.638 -0.344 -0.345 checkerboard intel" />
-	<node pkg="tf2_ros" type="static_transform_publisher" name="camera_camera" args="0.0 0.00 0.0 0.0 0.0 0.0 1.0 intel camera_link" />
+	<node pkg="tf2_ros" type="static_transform_publisher" name="robot_checkerboard" args="-0.25 0.15 -0.01384 3.1415 0.0 0.0 base checkerboard" />
+	<node pkg="tf2_ros" type="static_transform_publisher" name="camera_checkerboard" args="0.398 -0.018 0.286 1.57 0.0 -2.5 checkerboard intel" />
+	<node pkg="tf2_ros" type="static_transform_publisher" name="camera_camera" args="0.0 0.0 0.0 1.57 -1.57 0.0 intel camera_link" />
 </launch>

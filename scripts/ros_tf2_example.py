@@ -41,7 +41,7 @@ if __name__ == '__main__':
 		pt_in_tool.header.frame_id = 'fk_tooltip'
 		pt_in_tool.header.stamp = rospy.get_rostime()
 		pt_in_tool.point.z= 0.1 # 10 cm away from flange
-		# conert the 3D point to the base frame coordinates
+		# convert the 3D point to the base frame coordinates
 		pt_in_base = tfBuffer.transform(pt_in_tool,'base', rospy.Duration(1.0))
 		print('Test point in the TOOL frame:  x= ', format(pt_in_tool.point.x, '.3f'), '(m), y= ', format(pt_in_tool.point.y, '.3f'), '(m), z= ', format(pt_in_tool.point.z, '.3f'),'(m)')
 		print('Transformed point in the BASE frame:  x= ', format(pt_in_base.point.x, '.3f'), '(m), y= ', format(pt_in_base.point.y, '.3f'), '(m), z= ', format(pt_in_base.point.z, '.3f'),'(m)')
