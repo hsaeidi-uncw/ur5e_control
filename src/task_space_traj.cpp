@@ -258,7 +258,7 @@ int main(int argc, char * argv[])
 				printf("An error occurred (%d).\n", ResultValue );
 				break;
 			}
-			if (ResultValue == ReflexxesAPI::RML_FINAL_STATE_REACHED){
+			if (ResultValue == ReflexxesAPI::RML_FINAL_STATE_REACHED && (ctr <= number_of_points) ){
 				//setting the target velcoity and positions
 				int next_wp;
 				
