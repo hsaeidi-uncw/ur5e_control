@@ -198,10 +198,16 @@ int main(int argc, char * argv[]){
 	// define the ros node
 	ros::init(argc,argv, "ur5e_controller");
 	ros::NodeHandle nh_;
+	ros::NodeHandle home("~");
+	bool sim = true;
+	home.getParam("sim", sim);
 	
-
+	std::string command_topic = "/pos_joint_traj_controller/command";
+	// use the correct topic when controlling the real robot
+	if(!sim)
+		command_topic = "/scaled_pos_joint_traj_controller/command";
 	// publisher for sending control commands to the UR5e
-	ros::Publisher cmd_pub = nh_.advertise<trajectory_msgs::JointTrajectory>("/pos_joint_traj_controller/command",1);
+	ros::Publisher cmd_pub = nh_.advertise<trajectory_msgs::JointTrajectory>(command_topic,1);
 	// a publisher for quick debugging in the terminal
 	ros::Publisher xyzrpy_pub = nh_.advertise<geometry_msgs::Twist>("/ur5e/toolpose",10);
 	

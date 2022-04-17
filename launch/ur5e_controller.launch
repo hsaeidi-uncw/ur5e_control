@@ -1,0 +1,5 @@
+<launch>
+	<node name="ur5e_controller" pkg="ur5e_control" type="ur5e_controller">
+		<param name="sim" value="false"/>		
+	</node>
+</launch>
