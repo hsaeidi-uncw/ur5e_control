@@ -16,7 +16,7 @@
 
 // define the kinematic chain
 KDL::Chain UR5e(){
-
+  float gripper_length = 0.155; // mm
   KDL::Chain chain;
   // input parameters for the DH Frames are (double a,double alpha,double d,double theta)
   //base
@@ -45,7 +45,7 @@ KDL::Chain UR5e(){
 
   //joint 6
   chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),
-        KDL::Frame::DH(0, 0, 0.0996, 0)));
+        KDL::Frame::DH(0, 0, 0.0996 + gripper_length, 0)));
 
  
   return chain;
