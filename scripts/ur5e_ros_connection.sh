@@ -1,0 +1,1 @@
+roslaunch ur_robot_driver ur5e_bringup.launch robot_ip:=192.168.56.101 \ kinematics_config:=$(rospack find ur_calibration)/etc/ur5e_calibration.yaml \ use_tool_communication:=true \ tool_voltage:=24 \ tool_parity:=0 \ tool_baud_rate:=115200 \ tool_stop_bits:=1 \ tool_rx_idle_chars:=1.5 \ tool_tx_idle_chars:=3.5 \ tool_device_name:=/tmp/ttyUR
