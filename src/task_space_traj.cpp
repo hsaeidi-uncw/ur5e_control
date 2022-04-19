@@ -89,6 +89,7 @@ void get_plan(const ur5e_control::Plan & _data){
 	plan = _data;
 	plan_available = true;
 	number_of_points = plan.points.size();
+	std::cout << "received a plan with " << number_of_points << " points"<< std::endl;
 }
 
 
@@ -176,8 +177,6 @@ int main(int argc, char * argv[])
     float dt = (float) 1/loop_freq;
     ros::Rate loop_rate(loop_freq);
     ros::Publisher reflexxes_pub = nh_.advertise<geometry_msgs::Twist>("/reftraj",1);
-    ros::Publisher gripper_pub = nh_.advertise<std_msgs::UInt8>("/gripper_cmd",1);
-    ros::Publisher robot_pause_pub = nh_.advertise<std_msgs::Bool>("/pause_robot",1);
 
     ros::Subscriber plan_sub = nh_.subscribe("/plan",1,get_plan);
     ros::Subscriber pos_sub = nh_.subscribe("/ur5e/tool_pose" ,1, get_pos);
@@ -263,33 +262,9 @@ int main(int argc, char * argv[])
 			if (ResultValue == ReflexxesAPI::RML_FINAL_STATE_REACHED && (ctr <= number_of_points) ){
 				//setting the target velcoity and positions
 				int next_wp;
-				int prev_wp;
-				int next_mode;
-				int prev_mode;
-
-				prev_wp = (ctr-1) % number_of_points;				
+				
 				next_wp = ctr % number_of_points;
-				std::cout << "previous point: " << prev_wp <<", next point: " << next_wp << std::endl;
-				prev_mode = plan.modes[prev_wp].data;
-				next_mode = plan.modes[next_wp].data;
-				if ( prev_mode != next_mode){
-					std_msgs::Bool robot_pause_msg;
-					if (next_mode != 0){
-						robot_pause_msg.data = true;
-						robot_pause_pub.publish(robot_pause_msg);
-					}
-					gripper_pub.publish(plan.modes[next_wp]);
-					std::cout << "previous mode is: " << prev_mode <<", next mode is: " << next_mode << std::endl;
-
-					std::cout << "before sleep:" << std::endl;
-					ros::Duration(0.5).sleep();
-					std::cout << "after sleep: " << ctr << std::endl;
-					if (next_mode == 0){
-						robot_pause_msg.data = false;
-						robot_pause_pub.publish(robot_pause_msg);
-					}
-					//}
-				}
+				std::cout << "moving to point:" << next_wp << std::endl;
 				
 				IP->TargetPositionVector->VecData       [0] =   plan.points[next_wp].linear.x;
 				IP->TargetPositionVector->VecData       [1] =   plan.points[next_wp].linear.y;
@@ -308,15 +283,9 @@ int main(int argc, char * argv[])
 				}
 			
 				ctr ++;
-				std::cout << "ctr for next loop: " << ctr << std::endl;
-				if (next_mode == 0){
-					ResultValue =   RML->RMLPosition(       *IP
+				ResultValue =   RML->RMLPosition(       *IP
 					                                ,   OP
 					                                ,   Flags       );
-				}else{
-				
-					ResultValue = ReflexxesAPI::RML_WORKING;
-				}
 			}
 			// ****************************************************************
 			// Here, the new state of motion, that is
@@ -368,3 +337,5 @@ int main(int argc, char * argv[])
 
     exit(EXIT_SUCCESS)  ;
 }
+
+

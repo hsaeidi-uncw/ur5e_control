@@ -2,7 +2,6 @@
 #include <trajectory_msgs/JointTrajectory.h> 
 #include <trajectory_msgs/JointTrajectoryPoint.h> 
 #include <geometry_msgs/Twist.h>
-#include <std_msgs/Bool.h>
 #include <sensor_msgs/JointState.h>
 #include <tf/transform_broadcaster.h>
 #include <kdl/chain.hpp>
@@ -178,16 +177,6 @@ void get_ref(const geometry_msgs::Twist & data){
 	ref_received = true;
 }
 
-
-// read the reference trajectory from the reflexxes node e.g. ref xyz-rpy
-bool pause_robot = false;
-
-void get_pause(const std_msgs::Bool & data){
-	
-	pause_robot = data.data;
-	std::cout << "motion pause:" << pause_robot <<std::endl;
-}
-
 int main(int argc, char * argv[]){
 	// define the kinematic chain
 	KDL::Chain chain = UR5e();
@@ -228,7 +217,6 @@ int main(int argc, char * argv[]){
 	
 	// subscriber for reading the reference trajectories from the reflexxes-based node	
 	ros::Subscriber ref_sub = nh_.subscribe("/reftraj",10, get_ref);
-	ros::Subscriber pause_motion_sub = nh_.subscribe("/pause_robot",10, get_pause);
 	
 	// setting up the loop frequency 
 	int loop_freq = 10;
@@ -269,7 +257,7 @@ int main(int argc, char * argv[]){
 				}
 					
 				// if references for autonomous control are received
-				if (ref_received && !pause_robot){
+				if (ref_received){
 					std::cout << "inside ref received" << std::endl;
 					// convert the reference to a KDL frame
 					cartpos = update_ref(ref);
@@ -310,3 +298,5 @@ int main(int argc, char * argv[]){
 	
 	return 0;
 }
+
+
