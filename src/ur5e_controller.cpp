@@ -3,6 +3,7 @@
 #include <trajectory_msgs/JointTrajectoryPoint.h> 
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/JointState.h>
+#include <std_msgs/UInt8.h>
 #include <tf/transform_broadcaster.h>
 #include <kdl/chain.hpp>
 #include <kdl/chainfksolver.hpp>
@@ -172,9 +173,19 @@ geometry_msgs::Twist update_xyzrpy(KDL::Frame _cartpos){
 bool ref_received= false;
 geometry_msgs::Twist ref;
 void get_ref(const geometry_msgs::Twist & data){
-	std::cout << "inside get ref" << std::endl;
+	//std::cout << "inside get ref" << std::endl;
 	ref = data;
 	ref_received = true;
+}
+
+
+// get the updated mode
+unsigned int mode = 3;
+
+
+void get_mode(const std_msgs::UInt8 & data){
+	mode = data.data;
+	std::cout << "mode changed to: " << mode << std::endl;
 }
 
 int main(int argc, char * argv[]){
@@ -218,6 +229,9 @@ int main(int argc, char * argv[]){
 	// subscriber for reading the reference trajectories from the reflexxes-based node	
 	ros::Subscriber ref_sub = nh_.subscribe("/reftraj",10, get_ref);
 	
+	// subscriber for checking the status mode of the robot and gripper
+	ros::Subscriber mode_sub = nh_.subscribe("/gripper_robot_status",10, get_mode);
+	
 	// setting up the loop frequency 
 	int loop_freq = 10;
 	float dt = (float) 1/loop_freq;
@@ -258,7 +272,7 @@ int main(int argc, char * argv[]){
 					
 				// if references for autonomous control are received
 				if (ref_received){
-					std::cout << "inside ref received" << std::endl;
+					
 					// convert the reference to a KDL frame
 					cartpos = update_ref(ref);
 					// use the frame with the current joint positions to get the next joint positions via IK solver
@@ -270,7 +284,9 @@ int main(int argc, char * argv[]){
 					joint_cmd.points[0] = joint_cmd_point;
 					//std::cout << "inside while" << std::endl;
 					joint_cmd.header.stamp = ros::Time::now();
-					cmd_pub.publish(joint_cmd);
+					if (mode == 3){ //sends commands when the state switch is complete
+						cmd_pub.publish(joint_cmd);
+					}
 				}
 				// flag for the fk results
 				bool kinematics_status;

@@ -46,21 +46,25 @@ def split_plan(plan):
 		print(mode, approach_generated, drop_generated, retract_generated)
 		if mode.data == 0 and not approach_generated:
 			approach_plan.points.append(point)
+			approach_plan.modes.append(mode)
 			print('added to the approach')
 		elif mode.data != 0 and not approach_generated:
 			approach_generated = True
 		elif mode.data == 0 and not drop_generated and approach_generated:
 			drop_plan.points.append(point)
+			drop_plan.modes.append(mode)
 			print('added to the drop')
 		elif mode.data != 0 and not drop_generated and approach_generated:
 			drop_generated = True
 		elif mode.data == 0 and not retract_generated and drop_generated and approach_generated:
 			retract_plan.points.append(point)
+			retract_plan.modes.append(mode)
 			print('added to the retract')
 		else:
 			retract_generated = True
 	# make it go to the initial position
-	retract_plan.points.append(plan.points[0])	
+	retract_plan.points.append(plan.points[0])
+	retract_plan.modes.append(plan.modes[0])	
 	print('-------------')
 	print('Approach')
 	print(approach_plan)
