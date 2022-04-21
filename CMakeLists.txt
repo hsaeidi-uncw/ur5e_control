@@ -219,3 +219,6 @@ target_link_libraries(ur5e_controller ${catkin_LIBRARIES} orocos-kdl)
 
 add_executable(task_space_traj src/task_space_traj.cpp)
 target_link_libraries(task_space_traj ${catkin_LIBRARIES} ReflexxesTypeII)
+
+add_executable(task_space_traj_gripper src/task_space_traj_gripper.cpp)
+target_link_libraries(task_space_traj_gripper ${catkin_LIBRARIES} ReflexxesTypeII)

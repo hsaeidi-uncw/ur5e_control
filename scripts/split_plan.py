@@ -5,6 +5,8 @@ import rospy
 from ur5e_control.msg import Plan
 from std_msgs.msg import Bool
 from std_msgs.msg import UInt8
+from geometry_msgs.msg import Twist
+import math
 
 plan = Plan()
 
@@ -34,6 +36,11 @@ def status_callback(data):
 	global rob_gripper_status
 	rob_gripper_status = data.data
 	
+rob_pos = Twist()
+def rob_pos_callback(data):
+	global rob_pos
+	rob_pos = data
+	
 		
 def split_plan(plan):
 	approach_plan = Plan()
@@ -46,25 +53,29 @@ def split_plan(plan):
 		print(mode, approach_generated, drop_generated, retract_generated)
 		if mode.data == 0 and not approach_generated:
 			approach_plan.points.append(point)
-			approach_plan.modes.append(mode)
+			#approach_plan.modes.append(mode)
 			print('added to the approach')
 		elif mode.data != 0 and not approach_generated:
+			drop_plan.points.append(point)
+			#drop_plan.modes.append(mode)
 			approach_generated = True
 		elif mode.data == 0 and not drop_generated and approach_generated:
 			drop_plan.points.append(point)
-			drop_plan.modes.append(mode)
+			#drop_plan.modes.append(mode)
 			print('added to the drop')
 		elif mode.data != 0 and not drop_generated and approach_generated:
+			retract_plan.points.append(point)
+			#retract_plan.modes.append(mode)
 			drop_generated = True
 		elif mode.data == 0 and not retract_generated and drop_generated and approach_generated:
 			retract_plan.points.append(point)
-			retract_plan.modes.append(mode)
+			#retract_plan.modes.append(mode)
 			print('added to the retract')
 		else:
 			retract_generated = True
 	# make it go to the initial position
 	retract_plan.points.append(plan.points[0])
-	retract_plan.modes.append(plan.modes[0])	
+	#retract_plan.modes.append(plan.modes[0])	
 	print('-------------')
 	print('Approach')
 	print(approach_plan)
@@ -76,12 +87,37 @@ def split_plan(plan):
 	print(retract_plan)
 	return approach_plan, drop_plan, retract_plan
 	
+def is_at_target(plan, rob):
+	plan_size = len(plan.points)
+	# last piece of the plan
+	xt = plan.points[plan_size-1].linear.x
+	yt = plan.points[plan_size-1].linear.y
+	zt = plan.points[plan_size-1].linear.z
+	xr = rob.linear.x
+	yr = rob.linear.y
+	zr = rob.linear.z
+	# find the differences
+	dx = xt - xr
+	dy = yt - yr
+	dz = zt - zr
+	# calculate the total distance
+	distance = math.sqrt(dx*dx + dy*dy + dz*dz)
+
+	if distance < 0.003: # if we are less than 3mm from the target
+		return True
+	else:
+		return False
+		
+
+	
 if __name__ == '__main__':
 	# initialize the node
 	rospy.init_node('split_plan', anonymous = True)
 	# add a subscriber to it to read the position information
 	pos_sub = rospy.Subscriber('/plan', Plan, plan_callback)
 	traj_expired_sub = rospy.Subscriber('/traj_expired', Bool, traj_expired_callback)
+	rob_pos_sub = rospy.Subscriber('/ur5e/toolpose', Twist, rob_pos_callback)
+	
 	rob_gripper_status_sub = rospy.Subscriber('/gripper_robot_status', UInt8, status_callback)
 	
 	# publisher for splitted plan
@@ -90,13 +126,14 @@ if __name__ == '__main__':
 	gripper_cmd_pub = rospy.Publisher('/gripper_cmd', UInt8, queue_size = 10)
 	
 	# set a 10Hz frequency for this loop
-	loop_rate = rospy.Rate(10)
+	loop_rate = rospy.Rate(50)
 		
 	plan_splitted = False
 	
 	approach_plan = Plan()
 	drop_plan = Plan()
 	retract_plan = Plan()
+	current_plan = Plan()
 	states = ['approach', 'close', 'drop', 'open', 'retract', 'finished']
 	state = states[0]
 	
@@ -111,7 +148,7 @@ if __name__ == '__main__':
 		if plan_splitted:
 			if state == states[0] and rob_gripper_status == 3:
 				if not plan_submitted:
-					splitted_plan_pub.publish(approach_plan)
+					current_plan = approach_plan
 					print(state, 'plan submitted')
 					plan_submitted = True
 					traj_expired = False
@@ -133,7 +170,7 @@ if __name__ == '__main__':
 					plan_submitted = False
 			if state == states[2] and rob_gripper_status == 3:
 				if not plan_submitted:
-					splitted_plan_pub.publish(drop_plan)
+					current_plan = drop_plan
 					print(state, 'plan submitted')
 					plan_submitted = True
 					traj_expired = False
@@ -155,13 +192,16 @@ if __name__ == '__main__':
 					plan_submitted = False
 			if state == states[4] and rob_gripper_status == 3:
 				if not plan_submitted:
-					splitted_plan_pub.publish(retract_plan)
+					current_plan = retract_plan
 					print(state, 'plan submitted')
 					plan_submitted = True
 					traj_expired = False
 				if traj_expired:
 					state = states[5]
-					print('Switching to state:', state)					
+					print('Switching to state:', state)
+			splitted_plan_pub.publish(current_plan)
+			if is_at_target(current_plan, rob_pos):
+				traj_expired = True					
 
 		# wait for 0.1 seconds until the next loop and repeat
 		loop_rate.sleep()
